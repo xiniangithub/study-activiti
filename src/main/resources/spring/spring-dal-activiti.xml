@@ -1,13 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
-       xsi:schemaLocation="
-            http://www.springframework.org/schema/beans
-            http://www.springframework.org/schema/beans/spring-beans.xsd
-            http://www.springframework.org/schema/context
-            http://www.springframework.org/schema/context/spring-context.xsd">
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/tx
+		http://www.springframework.org/schema/tx/spring-tx.xsd
+		http://www.springframework.org/schema/data/jpa
+    	http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
 
-    <context:component-scan base-package="com.wez.study.activiti.dal" />
+    <jpa:repositories base-package="com.wez.study.activiti.dal"
+                      entity-manager-factory-ref="entityManagerFactory"
+                      transaction-manager-ref="transactionManager" />
 
+    <!-- 加载配置文件 -->
+     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+        <property name="ignoreResourceNotFound" value="true" />
+        <property name="locations">
+            <list>
+                <value>classpath:db.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="jpaVendorAdapter" ref="hibernateJpaVendorAdapter" />
+        <property name="packagesToScan">
+            <list>
+                <value>com.wez.study.activiti.po</value>
+            </list>
+        </property>
+        <property name="jpaProperties">
+            <props>
+                <prop key="hibernate.ejb.naming_strategy">org.hibernate.cfg.ImprovedNamingStrategy</prop>
+                <prop key="hibernate.generate_statistics">${hibernate.generate_statistics}</prop>
+                <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                <prop key="hibernate.default_schema">${hibernate.default_schema}</prop>
+                <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+                <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!--指定实现JPA的适配器 -->
+    <bean id="hibernateJpaVendorAdapter" class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+        <property name="generateDdl" value="true" />
+        <property name="database" value="ORACLE" />
+        <property name="databasePlatform" value="${hibernate.dialect}" />
+    </bean>
+    <!-- JPA事务配置 -->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory" />
+    </bean>
+    <!-- 使用annotation定义事务 -->
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+
+    <!-- Activiti数据源 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}" />
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+        <!-- 配置初始化大小、最小、最大 -->
+        <!-- 通常来说，只需要修改initialSize、minIdle、maxActive -->
+        <property name="initialSize" value="${jdbc.initialSize}" />
+        <property name="minIdle" value="4" />
+        <property name="maxActive" value="100" />
+        <!-- <property name="testWhileIdle" value="${jdbc.testWhileIdle}" /> -->
+        <property name="validationQuery" value="select 1 FROM DUAL" />
+        <property name="testOnBorrow" value="true"/>
+        <property name="testOnReturn" value="false" />
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="50000" />
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒，该值要比'wait_timeout'的值小 -->
+        <!-- 可以通过sql命令show variables like 'wait_timeout' 看到mysql的 wait_timeout时间是28800-->
+        <property name="minEvictableIdleTimeMillis" value="30100" />
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="10000" />
+        <!-- 解密密码必须要配置的项 -->
+        <!-- <property name="filters" value="stat,log4j" /> -->
+        <property name="connectionProperties" value="config.decrypt=true" />
+        <property name="filters" value="stat" />
+    </bean>
+
+    <bean id="processEngineConfiguration" class="org.activiti.spring.SpringProcessEngineConfiguration">
+        <property name="dataSource" ref="dataSource" />
+        <property name="transactionManager" ref="transactionManager" />
+        <property name="databaseSchema" value="${hibernate.default_schema}" />
+        <!-- <property name="jdbcMaxActiveConnections" value="100" /> 默认10 -->
+        <property name="idGenerator">
+            <bean class="org.activiti.engine.impl.persistence.StrongUuidGenerator" />
+        </property>
+        <!-- 建表策略，可选值：true、false、create_drop -->
+        <property name="databaseSchemaUpdate" value="none" />
+        <!-- 自动加载bpmn（改变时会重新加载） -->
+        <property name="deploymentResources">
+            <list>
+                <value>classpath:/workflow/*</value>
+            </list>
+        </property>
+
+        <!-- 流程部署更新策略 1.default：只要有一个资源改变就全部重新部署。 2：single-resource：只部署改变的资源。3：resource-parent-folder：更新同一目录下的资源。 -->
+        <property name="deploymentMode" value="single-resource" />
+
+        <!-- 使用Activiti身份管理：true:使用，false不使用 -->
+        <property name="dbIdentityUsed" value="false" />
+
+        <property name="activityFontName" value="宋体" />
+        <property name="labelFontName" value="宋体" />
+        <property name="annotationFontName" value="宋体" />
+        <property name="xmlEncoding" value="utf8"/>
+
+        <!-- JPA -->
+        <property name="jpaEntityManagerFactory" ref="entityManagerFactory" />
+        <property name="jpaHandleTransaction" value="false" />
+        <property name="jpaCloseEntityManager" value="false" />
+    </bean>
+
+    <bean id="processEngineFactory" class="org.activiti.spring.ProcessEngineFactoryBean">
+        <property name="processEngineConfiguration" ref="processEngineConfiguration" />
+    </bean>
+
+    <!-- 7大接口 -->
+    <bean id="repositoryService" factory-bean="processEngineFactory" factory-method="getRepositoryService" />
+    <bean id="runtimeService" factory-bean="processEngineFactory" factory-method="getRuntimeService" />
+    <bean id="formService" factory-bean="processEngineFactory" factory-method="getFormService" />
+    <bean id="identityService" factory-bean="processEngineFactory" factory-method="getIdentityService" />
+    <bean id="taskService" factory-bean="processEngineFactory" factory-method="getTaskService" />
+    <bean id="historyService" factory-bean="processEngineFactory" factory-method="getHistoryService" />
+    <bean id="managementService" factory-bean="processEngineFactory" factory-method="getManagementService" />
 </beans>
