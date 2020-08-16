@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="off">
+    <Properties>
+        <Property name="baseDir">${sys:catalina.home}/logs</Property>
+    </Properties>
+    
+    <CustomLevels>
+        <!-- 
+            日志级别以及优先级排序: OFF > FATAL > ERROR > WARN > INFO > DEBUG > TRACE > ALL
+            intLevel值依次为          0,    100,    200,    300,   400,   500,    600,    700
+            intLevel 值越小，级别越高 （log4j2 官方文档）
+         -->
+        <CustomLevel name="AUDIT" intLevel="50" />
+    </CustomLevels>
+    
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout charset="UTF-8" pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%-5p][%C] - %m%n" />
+        </Console>
+        
+        <!-- 自定义 -->
+        <RollingFile name="RollingFileLog"
+            fileName="${baseDir}/study-activiti/audit-log/audit-log.log" filePattern="${baseDir}/study-activiti/audit-log/audit-log-%i.log">
+            <ThresholdFilter level="AUDIT" onMatch="ACCEPT" onMismatch="DENY" />
+            <PatternLayout pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%p][STUDY_TASK][STUDY_TASK]%m%n" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <!-- 保存最大文件个数 -->
+            <DefaultRolloverStrategy max="50" />
+        </RollingFile>
+        
+        <!--trace级别日志输出-->
+        <RollingFile name="system-trace"
+            fileName="${baseDir}/study-activiti/trace.log" filePattern="${baseDir}/study-activiti/trace-%i.log">
+            <Filters>
+                <ThresholdFilter level="debug" onMatch="DENY" onMismatch="NEUTRAL"/>  
+                <ThresholdFilter level="trace" onMatch="ACCEPT" onMismatch="DENY" />
+            </Filters>
+            <PatternLayout charset="UTF-8" pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%p][STUDY_TASK][STUDY_TASK][%l]%n%m%n" />
+            <Policies>
+                <!-- 日志文件大小 -->
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <!-- 保存最大文件个数 -->
+            <DefaultRolloverStrategy max="50" />
+        </RollingFile>
+        <!--Info级别日志输出-->
+        <RollingFile name="system-info"
+            fileName="${baseDir}/study-activiti/info.log" filePattern="${baseDir}/study-activiti/info-%i.log">
+            <Filters>
+                <ThresholdFilter level="warn" onMatch="DENY" onMismatch="NEUTRAL"/>  
+                <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY" />
+            </Filters>
+            <PatternLayout charset="UTF-8" pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%p][STUDY_TASK][STUDY_TASK][%l]%n%m%n" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="50" />
+        </RollingFile>
+        <!--debug级别日志输出-->
+        <RollingFile name="system-debug"
+            fileName="${baseDir}/study-activiti/debug.log" filePattern="${baseDir}/study-activiti/debug-%i.log">
+            <Filters>
+                <ThresholdFilter level="info" onMatch="DENY" onMismatch="NEUTRAL"/>  
+                <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY" />
+            </Filters>
+            <PatternLayout charset="UTF-8" pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%p][STUDY_TASK][STUDY_TASK][%l]%n%m%n" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="50" />
+        </RollingFile>
+        <!--Error级别日志输出-->
+        <RollingFile name="system-error"
+            fileName="${baseDir}/study-activiti/error.log" filePattern="${baseDir}/study-activiti/error-%i.log">
+            <Filters>
+                <ThresholdFilter level="AUDIT" onMatch="DENY" onMismatch="NEUTRAL" />
+                <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY" />
+            </Filters>
+            <PatternLayout charset="UTF-8" pattern="[%d{yyyy/MM/dd HH:mm:ssSSS}][%p][STUDY_TASK][STUDY_TASK][%l]%n%m%n" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="50" />
+        </RollingFile>
+    </Appenders>
+    
+    <Loggers>
+        <logger name="org.springframework" level="INFO"></logger>
+        <logger name="org.hibernate" level="INFO"></logger>
+        <logger name="org.apache.http" level="INFO"></logger>
+        <!-- <logger name="org.apache.ibatis" level="ERROR"></logger>
+        <logger name="org.activiti" level="ERROR"></logger> -->
+        
+        <root level="debug">
+            <appender-ref ref="console" />
+            <appender-ref ref="system-info" />
+            <appender-ref ref="system-trace" />
+            <appender-ref ref="system-debug" />
+            <appender-ref ref="system-error" />
+            <appender-ref ref="RollingFileLog" />
+        </root>
+    </Loggers>
+</configuration>

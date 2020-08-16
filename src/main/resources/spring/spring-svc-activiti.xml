@@ -7,7 +7,11 @@
             http://www.springframework.org/schema/beans/spring-beans.xsd
             http://www.springframework.org/schema/context
             http://www.springframework.org/schema/context/spring-context.xsd">
-
-    <context:component-scan base-package="com.wez.study.activiti.svc" />
-
+    
+    <import resource="./spring-dal-activiti.xml" />
+    
+    <context:component-scan base-package="com.wez.study.activiti.config" />
+    
+    <bean id="objectMapper" class="com.fasterxml.jackson.databind.ObjectMapper"/>
+    
 </beans>
